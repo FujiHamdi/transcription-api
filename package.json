@@ -1,4 +1,6 @@
 {
+  "name": "transcription-api",
+  "version": "1.0.0",
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "cors": "^2.8.6",
