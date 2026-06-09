@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  REPORTER
+  EDITOR
+}
+
+enum JobType {
+  PHYSICAL
+  REMOTE
+}
+
+enum JobStatus {
+  NEW
+  ASSIGNED
+  TRANSCRIBED
+  REVIEWED
+  COMPLETED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  city      String
+  available Boolean  @default(true)
+
+  role Role
+
+  reporterJobs Job[] @relation("ReporterJobs")
+  editorJobs   Job[] @relation("EditorJobs")
+}
+
+model Job {
+  id Int @id @default(autoincrement())
+
+  caseName String
+  duration Int
+
+  city String
+
+  jobType JobType
+
+  status JobStatus @default(NEW)
+
+  reporterId Int?
+  editorId Int?
+
+  reporter User? @relation("ReporterJobs", fields: [reporterId], references: [id])
+
+  editor User? @relation("EditorJobs", fields: [editorId], references: [id])
+
+  reporterPayment Float @default(0)
+
+  editorPayment Float @default(0)
+
+  totalPayment Float @default(0)
+
+  createdAt DateTime @default(now())
+}
