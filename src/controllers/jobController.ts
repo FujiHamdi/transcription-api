@@ -32,194 +32,255 @@ export const createJob = async (
   }
 };
 
-export const assignReporter = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const id = Number(req.params.id);
+export const assignReporter =
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const id = Number(
+        req.params.id
+      );
 
-    const job = await prisma.job.findUnique({
-      where: { id },
-    });
+      const job =
+        await prisma.job.findUnique({
+          where: { id },
+        });
 
-    if (!job) {
-      return res.status(404).json({
-        message: "Job not found",
-      });
-    }
+      if (!job) {
+        return res.status(404).json({
+          message: "Job not found",
+        });
+      }
 
-    let reporter;
+      if (job.status !== "NEW") {
+        return res.status(400).json({
+          message:
+            "Reporter can only be assigned to NEW jobs",
+        });
+      }
 
-    // PHYSICAL job → same city preferred
-    if (job.jobType === "PHYSICAL") {
-      reporter = await prisma.user.findFirst({
-        where: {
-          role: "REPORTER",
-          city: job.city,
-          available: true,
-        },
-      });
-    } else {
-      // REMOTE job
-      reporter = await prisma.user.findFirst({
-        where: {
-          role: "REPORTER",
-          available: true,
-        },
-      });
-    }
+      const reporter =
+        await prisma.user.findFirst({
+          where: {
+            role: "REPORTER",
+            available: true,
+            OR: [
+              {
+                city: job.city,
+              },
+              {
+                city: "REMOTE",
+              },
+            ],
+          },
+        });
 
-    if (!reporter) {
-      return res.status(400).json({
-        message: "No available reporter",
-      });
-    }
+      if (!reporter) {
+        return res.status(404).json({
+          message:
+            "No available reporter",
+        });
+      }
 
-    const updatedJob = await prisma.job.update({
-      where: { id },
-      data: {
-        reporterId: reporter.id,
-        status: "ASSIGNED",
-      },
-    });
+      const reporterPayment =
+        job.duration * 2000;
 
-    res.json(updatedJob);
-  } catch (error) {
-    console.log(error);
+      const updatedJob =
+        await prisma.job.update({
+          where: { id },
+          data: {
+            reporterId:
+              reporter.id,
+            reporterPayment,
+            status:
+              "ASSIGNED",
+          },
+        });
 
-    res.status(500).json({
-      message: "Reporter assignment failed",
-    });
-  }
-};
+      res.json(updatedJob);
+    } catch (error) {
+      console.log(error);
 
-export const markTranscribed = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const id = Number(req.params.id);
-
-    const updatedJob = await prisma.job.update({
-      where: { id },
-      data: {
-        status: "TRANSCRIBED",
-      },
-    });
-
-    res.json(updatedJob);
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Failed to update transcription status",
-    });
-  }
-};
-
-export const assignEditor = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const id = Number(req.params.id);
-
-    const job = await prisma.job.findUnique({
-      where: { id },
-    });
-
-    if (!job) {
-      return res.status(404).json({
-        message: "Job not found",
-      });
-    }
-
-    if (job.status !== "TRANSCRIBED") {
-      return res.status(400).json({
+      res.status(500).json({
         message:
-          "Editor can only be assigned after transcription",
+          "Assign reporter failed",
       });
     }
+  };
 
-    const editor = await prisma.user.findFirst({
-      where: {
-        role: "EDITOR",
-        available: true,
-      },
-    });
+export const markTranscribed =
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const id = Number(
+        req.params.id
+      );
 
-    if (!editor) {
-      return res.status(400).json({
-        message: "No available editor",
+      const job =
+        await prisma.job.findUnique({
+          where: { id },
+        });
+
+      if (!job) {
+        return res.status(404).json({
+          message: "Job not found",
+        });
+      }
+
+      if (
+        job.status !== "ASSIGNED"
+      ) {
+        return res.status(400).json({
+          message:
+            "Only ASSIGNED jobs can be transcribed",
+        });
+      }
+
+      const updatedJob =
+        await prisma.job.update({
+          where: { id },
+          data: {
+            status:
+              "TRANSCRIBED",
+          },
+        });
+
+      res.json(updatedJob);
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message:
+          "Failed to update transcription status",
       });
     }
+  };
 
-    const updatedJob = await prisma.job.update({
-      where: { id },
-      data: {
-        editorId: editor.id,
-        status: "REVIEWED",
-      },
-    });
+export const assignEditor =
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const id = Number(
+        req.params.id
+      );
 
-    res.json(updatedJob);
-  } catch (error) {
-    console.log(error);
+      const job =
+        await prisma.job.findUnique({
+          where: { id },
+        });
 
-    res.status(500).json({
-      message: "Editor assignment failed",
-    });
-  }
-};
+      if (!job) {
+        return res.status(404).json({
+          message: "Job not found",
+        });
+      }
 
-export const calculatePayment = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const id = Number(req.params.id);
+      if (
+        job.status !==
+        "TRANSCRIBED"
+      ) {
+        return res.status(400).json({
+          message:
+            "Editor can only be assigned after transcription",
+        });
+      }
 
-    const job = await prisma.job.findUnique({
-      where: { id },
-    });
+      const editor =
+        await prisma.user.findFirst({
+          where: {
+            role: "EDITOR",
+            available: true,
+          },
+        });
 
-    if (!job) {
-      return res.status(404).json({
-        message: "Job not found",
+      if (!editor) {
+        return res.status(404).json({
+          message:
+            "No available editor",
+        });
+      }
+
+      const updatedJob =
+        await prisma.job.update({
+          where: { id },
+          data: {
+            editorId: editor.id,
+            editorPayment: 50000,
+            status:
+              "REVIEWED",
+          },
+        });
+
+      res.json(updatedJob);
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message:
+          "Assign editor failed",
       });
     }
+  };
 
-    // Reporter paid per minute
-    const reporterPayment =
-      job.duration * 2000;
+export const calculatePayment =
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const id = Number(
+        req.params.id
+      );
 
-    // Editor flat fee
-    const editorPayment = 50000;
+      const job =
+        await prisma.job.findUnique({
+          where: { id },
+        });
 
-    // Total payout
-    const totalPayment =
-      reporterPayment + editorPayment;
+      if (!job) {
+        return res.status(404).json({
+          message: "Job not found",
+        });
+      }
 
-    const updatedJob = await prisma.job.update({
-      where: { id },
-      data: {
-        reporterPayment,
-        editorPayment,
-        totalPayment,
-        status: "COMPLETED",
-      },
-    });
+      if (
+        job.status !== "REVIEWED"
+      ) {
+        return res.status(400).json({
+          message:
+            "Payment can only be calculated after review",
+        });
+      }
 
-    res.json(updatedJob);
-  } catch (error) {
-    console.log(error);
+      const totalPayment =
+        (job.reporterPayment || 0) +
+        (job.editorPayment || 0);
 
-    res.status(500).json({
-      message: "Payment calculation failed",
-    });
-  }
-};
+      const updatedJob =
+        await prisma.job.update({
+          where: { id },
+          data: {
+            totalPayment,
+            status:
+              "COMPLETED",
+          },
+        });
+
+      res.json(updatedJob);
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message:
+          "Calculate payment failed",
+      });
+    }
+  };
 
 export const getJobs = async (
   req: Request,
