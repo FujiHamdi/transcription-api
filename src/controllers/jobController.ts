@@ -287,6 +287,9 @@ export const getJobs = async (
         reporter: true,
         editor: true,
       },
+       orderBy: {
+        id: "asc",
+      },
     });
 
     res.json(jobs);
