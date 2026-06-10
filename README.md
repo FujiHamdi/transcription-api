@@ -48,7 +48,7 @@ NEW
 Clone repository:
 
 ```bash
-git clone YOUR_REPOSITORY_URL
+git clone REPOSITORY_URL
 ```
 
 Go to project folder:
@@ -70,7 +70,7 @@ npm install
 Create `.env` file:
 
 ```env
-DATABASE_URL="YOUR_DATABASE_URL"
+DATABASE_URL="DATABASE_URL"
 ```
 
 Example using Neon PostgreSQL:
