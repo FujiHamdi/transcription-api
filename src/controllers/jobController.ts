@@ -65,14 +65,9 @@ export const assignReporter =
           where: {
             role: "REPORTER",
             available: true,
-            OR: [
-              {
-                city: job.city,
-              },
-              {
-                city: "REMOTE",
-              },
-            ],
+          },
+          orderBy: {
+            city: "asc",
           },
         });
 
